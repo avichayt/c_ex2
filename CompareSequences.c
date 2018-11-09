@@ -12,11 +12,16 @@
 #define MISMATCH_WEIGHT_ARGUMENT 3
 #define GAP_WEIGHT_ARGUMENT 4
 
+//todo exact errors
 #define FILE_OPEN_ERROR "Error in opening file: %s"
 
-void handleFile(char *fileName, int m, int s, int g);
+char **getSequencesFromFile(char *fileName, int *amountOfSequences);
 
 bool isHeaderLine(char *line);
+
+void calculateAlignmentScore(char *seq1, char *seq2, int m, int s, int g);
+
+int max(int n1, int n2);
 
 int main(int argc, char **argv)
 {
@@ -31,14 +36,69 @@ int main(int argc, char **argv)
     int s = atoi(argv[MISMATCH_WEIGHT_ARGUMENT]);
     int g = atoi(argv[GAP_WEIGHT_ARGUMENT]);
 
-    handleFile(argv[FILE_NAME_ARGUMENT], m, s, g);
+    int amountOfSeqs;
+    char **sequences = getSequencesFromFile(argv[FILE_NAME_ARGUMENT], &amountOfSeqs);
+
+    for (int i = 0; i < amountOfSeqs; ++i)
+    {
+        for (int j = i + 1; j < amountOfSeqs; ++j)
+        {
+            calculateAlignmentScore(sequences[i], sequences[j], m, s, g);
+        }
+    }
 
     return 0;
 }
 
-
-void handleFile(char *fileName, int m, int s, int g)
+void calculateAlignmentScore(char *seq1, char *seq2, int m, int s, int g)
 {
+    int len1 = (int) strlen(seq1), len2 = (int) strlen(seq2);
+    int *dataValues = (int *) malloc((len1 + 1) * (len2 + 1) * sizeof(int));
+    for (int i = 0; i < len1; ++i)
+    {
+        *(dataValues + (i) * len2 + (0)) = g * i;
+    }
+    for (int i = 0; i < len2; ++i)
+    {
+        *(dataValues + (0) * len2 + (i)) = g * i;
+    }
+
+    for (int i = 1; i <= len1; ++i)
+    {
+        for (int j = 1; j <= len2; ++j)
+        {
+            int matchXMinusYMinus, matchXYMinus, matchXMinusY;
+
+            if (seq1[i] == seq2[2])
+            {
+                matchXMinusYMinus = (int) (*(dataValues + (i - 1) * len2 + (j - 1)) + m);//dataValues[i - 1][j - 1] + m;
+            } else
+            {
+                matchXMinusYMinus = (int) (*(dataValues + (i - 1) * len2 + (j - 1)) + s);
+            }
+
+            matchXMinusY = (int) (*(dataValues + (i - 1) * len2 + (j)) + g); //dataValues[i - 1][j] + g;
+            matchXYMinus = (int) (*(dataValues + (i) * len2 + (j - 1)) + g);//dataValues[i][i - 1] + g;
+
+
+            *(dataValues + (i) * len2 + (j)) = max(matchXMinusYMinus, max(matchXYMinus, matchXMinusY));
+        }
+    }
+    printf("%d\n", *(dataValues + (len1) * len2 + (len2)));
+}
+
+int max(int n1, int n2)
+{
+    if (n1 > n2)
+    {
+        return n1;
+    }
+    return n2;
+}
+
+char **getSequencesFromFile(char *fileName, int *amountOfSequences)
+{
+    //todo make function shorter
     FILE *fileHandle;
     char line[MAX_LINE_LENGTH];
 
@@ -50,7 +110,7 @@ void handleFile(char *fileName, int m, int s, int g)
         exit(EXIT_FAILURE);
     }
 
-    char *data[MAX_AMOUNT_OF_SEQUENCES];
+    char **sequences = (char **) malloc(MAX_AMOUNT_OF_SEQUENCES * sizeof(char *));
     int seqNumber = -1;
     char *currentSeq = NULL;
     size_t currentSeqLength = 0;
@@ -63,7 +123,7 @@ void handleFile(char *fileName, int m, int s, int g)
         {
             if (seqNumber >= 0)
             {
-                data[seqNumber] = currentSeq;
+                sequences[seqNumber] = currentSeq;
             }
             seqNumber++;
 
@@ -107,12 +167,15 @@ void handleFile(char *fileName, int m, int s, int g)
             currentSeqLength += currentLineLength;
         }
     }
-    data[seqNumber] = currentSeq;
+    sequences[seqNumber] = currentSeq;
     fclose(fileHandle);
+    *amountOfSequences = seqNumber + 1;
+    return sequences;
 }
 
 bool isHeaderLine(char *line)
 {
+    // todo magic number
     return *line == '>';
 }
 
