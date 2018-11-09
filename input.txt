@@ -1,0 +1,9 @@
+>seq1
+GATTACAATATT
+abc
+>seq2
+CTTTGCATTT
+def
+>seq3
+GGATTCGATG
+ggh
